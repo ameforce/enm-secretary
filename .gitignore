@@ -6,3 +6,5 @@
 # Pyinstaller template
 /build
 /dist
+/*.exe
+/*.spec
