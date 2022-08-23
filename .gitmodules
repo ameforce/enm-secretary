@@ -1,0 +1,6 @@
+[submodule "libs/base64-clip-decoder"]
+	path = libs/base64-clip-decoder
+	url = https://github.com/ameforce/base64-clip-decoder
+[submodule "libs/image-search"]
+	path = libs/image-search
+	url = https://github.com/ameforce/image-search
