@@ -4,8 +4,8 @@ from PyQt5.QtCore import Qt
 # from selenium.webdriver.common.by import By
 
 from screeninfo import get_monitors
-from libs import b64decoder.b64decoder
-from libs import imagesearch.imagesearch
+from libs.b64decoder import b64decoder
+from libs.imagesearch import imagesearch
 from pynput import keyboard
 import pyautogui
 import pyperclip
