@@ -93,7 +93,7 @@ class AutomaticPayment:
                 im = imagesearch.ImageSearch()
                 password = list(self.payment_password)
                 file_name = f'{payment_type}\\1080\\{password[0]}'      # 원래 1080 자리에 resolution이 들어감.
-                im.image_search_windows(file_name, False, True, interval=0.3)
+                im.image_search_windows(file_name, False, True)
 
                 if im.get_detection_status():
                     for num in password[1:]:
@@ -165,7 +165,6 @@ def cultureland_charger():
     return
 
 
-
 def compare_window_text(detect_window_text: string, interval: float = 0.3):
     """
     :param detect_window_text:  Enter a title for the window you want to detect.
@@ -218,13 +217,13 @@ def mma_certificator():
         pyautogui.press('enter')
 
         im = imagesearch.ImageSearch()
-        im.image_search_windows(authentication_hard_disk_activated_image_name, True, True, interval=0.3)
+        im.image_search_windows(authentication_hard_disk_activated_image_name, True, True)
         for i in range(3):
             pyautogui.press('tab')
         pyautogui.write(authentication_password)
         pyautogui.press('enter')
 
-        im.image_search_windows(authentication_popup_confirm_image_name, True, True, interval=0.3)
+        im.image_search_windows(authentication_popup_confirm_image_name, True, True)
         time.sleep(0.3)
         pyautogui.leftClick(im.get_pos_center())
 
