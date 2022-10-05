@@ -157,11 +157,12 @@ class MyApp(QWidget):
         self.move(qr.topLeft())
 
     def check_command(self):
-        if self.command == 'cultureland-charge':
+        if self.command == 'culture-charge':
             cultureland_charger()
 
 
 def cultureland_charger():
+    
     return
 
 
