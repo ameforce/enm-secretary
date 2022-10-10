@@ -7,70 +7,122 @@ from screeninfo import get_monitors
 from libs.b64decoder import b64decoder
 from libs.imagesearch import imagesearch
 from pynput import keyboard
+from winreg import *
 import pyautogui
 import pyperclip
 import win32gui
+import random
+import string
 import time
 import sys
 import os
-import string
-from winreg import *
+
+
+class DataManagement:
+    def __init__(self):
+        self.hkey_type = HKEY_CURRENT_USER
+        self.path = r'SOFTWARE\ENMSoft\ENMSecretary'
+        self.key_name = None
+        self.ascii_check_range = 126
+        self.rand_range = 128
+        self.__data = ''
+        self.DATA_SEPARATOR = "@Data Separator#"
+
+    def encryption_data(self, resource: str = None):
+        encrypted_resource = []
+        resource = resource.split(self.DATA_SEPARATOR)
+
+        running_count = 0
+        for element in resource:
+            for char in element:
+                char = char + '@enm#'
+                encrypted_char = []
+                rand_num = random.randint(1, self.rand_range)
+                for semi_char in char:
+                    semi_char = chr(ord(semi_char) + rand_num)
+                    encrypted_char.append(semi_char)
+                encrypted_resource.append(''.join(encrypted_char))
+            running_count += 1
+            if running_count != len(resource):
+                encrypted_resource.append(self.DATA_SEPARATOR)
+        self.__data = ''.join(encrypted_resource)
+
+    def decryption_data(self):
+        decrypted_resource = []
+        running_count = 0
+        for resource in self.__data.split(self.DATA_SEPARATOR):
+            new_resource = []
+            for i in range(len(resource) // 6):
+                split_data = []
+                for j in range(6):
+                    split_data.append(resource[i*6+j])
+                new_resource.append(split_data)
+
+            for raw_data in new_resource:
+                max_range = self.rand_range
+                raw_data_min_num = min(ord(raw_char) for raw_char in raw_data[0:6])
+                if raw_data_min_num < self.rand_range:
+                    max_range = raw_data_min_num
+                for i in range(max_range):
+                    decrypting_data = []
+                    for raw_char in raw_data:
+                        decrypting_data.append(chr(ord(raw_char) - i))
+                    if ''.join(decrypting_data[1:6]) == '@enm#':
+                        decrypted_resource.append(decrypting_data[0])
+                        break
+            running_count += 1
+            if running_count != len(self.__data.split(self.DATA_SEPARATOR)):
+                decrypted_resource.append(self.DATA_SEPARATOR)
+        return ''.join(decrypted_resource)
+
+    def read_data(self):
+        reg_handle = ConnectRegistry(None, self.hkey_type)
+        try:
+            reg_key = OpenKey(reg_handle, self.path, 0, KEY_READ)
+            value = QueryValueEx(reg_key, self.key_name)
+            CloseKey(reg_key)
+            self.__data = value[0]
+            return True
+        except WindowsError:
+            return False
+
+    def save_data(self):
+        reg_handle = ConnectRegistry(None, self.hkey_type)
+        CreateKey(self.hkey_type, self.path)
+        reg_key = OpenKey(reg_handle, self.path, 0, KEY_WRITE)
+        try:
+            SetValueEx(reg_key, self.key_name, 0, REG_SZ, self.__data)
+        except EnvironmentError:
+            print('레지스트리 쓰기에 문제가 발생했습니다.')
+        CloseKey(reg_key)
+        return True
 
 
 class AutomaticPayment:
     def __init__(self):
-        super().__init__()
         self.payment_type_list = ['smilepay', 'naverpay', 'skpay', 'paycopay', 'coupangpay']
-        self.payment_password = ''
+        self.dm = DataManagement()
 
-    def update_password(self, password: str):
-        self.payment_password = password
+        for payment_type in self.payment_type_list:
+            self.dm.key_name = payment_type
+            if not self.dm.read_data():
+                self.initial_setting(payment_type)
 
-    def write_password(self, payment_type: str, password: str):
-        save_path = 'SOFTWARE\\ENMSoft\\ENMSecretary'
-        CreateKey(HKEY_CURRENT_USER, save_path)
+    def initial_setting(self, payment_type: str):
+        print(f'[{payment_type}]의 초기 설정이 되어 있지 않습니다.')
+        while True:
+            print(f'[{payment_type}]의 결제 비밀번호를 입력해주세요: ', end='')
+            input_resource = input('')
 
-        reg_handle = ConnectRegistry(None, HKEY_CURRENT_USER)
-        key = OpenKey(reg_handle, save_path, 0, KEY_WRITE)
-        try:
-            SetValueEx(key, payment_type, 0, REG_SZ, f'{password}')
-        except EnvironmentError:
-            print('레지스트리 쓰기에 문제가 발생했습니다.')
+            try:
+                int(input_resource)
+                break
+            except ValueError:
+                print('결제 비밀번호는 숫자만 입력할 수 있습니다.')
 
-        CloseKey(key)
-        self.update_password(password)
-
-    def initial_setting(self, payment_type: str, recursive_state: bool = False):
-        if not recursive_state:
-            print(f'[{payment_type}]의 초기 설정이 되어 있지 않습니다.')
-        print(f'[{payment_type}]의 결제 비밀번호를 입력해주세요: ', end='')
-        input_resource = input('')
-
-        try:
-            int(input_resource)
-        except ValueError:
-            print('결제 비밀번호는 숫자만 입력할 수 있습니다.')
-            self.initial_setting(payment_type, True)
-            return
-
-        self.write_password(payment_type, input_resource)
-
-    def read_password(self, payment_type: str):
-        reg_handle = ConnectRegistry(None, HKEY_CURRENT_USER)
-        read_path = 'SOFTWARE\\ENMSoft\\ENMSecretary'
-
-        try:
-            key = OpenKey(reg_handle, read_path, 0, KEY_READ)
-            extracted_value = QueryValueEx(key, payment_type)
-        except FileNotFoundError:
-            print(f'now payment_type: {payment_type}')
-            self.initial_setting(payment_type)
-            self.read_password(payment_type)
-            return
-
-        CloseKey(key)
-
-        self.update_password(extracted_value[0])
+        self.dm.key_name = payment_type
+        self.dm.encryption_data(input_resource)
+        self.dm.save_data()
 
     def common_logic(self, payment_type: str):
         if payment_type == 'smilepay':
@@ -82,7 +134,7 @@ class AutomaticPayment:
         elif payment_type == 'paycopay':
             window_text_list = ['PAYCO']
         elif payment_type == 'coupangpay':
-            window_text_list = ['COUPANG']      # None Clearly
+            window_text_list = ['COLOR OF YOUR DAYS!']      # None Clearly
         else:
             window_text_list = ['']
 
@@ -91,7 +143,9 @@ class AutomaticPayment:
             if compare_status:
                 fasten_window(window_hwnd)
                 im = imagesearch.ImageSearch()
-                password = list(self.payment_password)
+                self.dm.key_name = payment_type
+                self.dm.read_data()
+                password = list(self.dm.decryption_data())
                 file_name = f'{payment_type}\\1080\\{password[0]}'      # 원래 1080 자리에 resolution이 들어감.
                 im.image_search_windows(file_name, False, True)
 
@@ -108,8 +162,35 @@ class AutomaticPayment:
 
     def auto_runner(self):
         for payment_type in self.payment_type_list:
-            self.read_password(payment_type)
             self.common_logic(payment_type)
+
+
+class AutomaticCert:
+    def __init__(self):
+        self.user_name = None
+        self.phone_num = None
+        self.sleep_time = 50
+
+    def initial_setting(self):
+        while True:
+            if self.user_name is None:
+                empty_data_text = '사용자 이름'
+            elif self.phone_num is None:
+                empty_data_text = '사용자 휴대폰 번호'
+            else:
+                break
+            print(f'[{empty_data_text}]의 초기 설정이 되어 있지 않습니다')
+            print(f'[{empty_data_text}] 입력: ')
+            input_resource = input('')
+
+        self.write_password(payment_type, input_resource)
+
+
+    def update_data(self, user_name: str = None, phone_num: str = None, sleep_time: int = 50):
+        self.user_name = user_name
+        self.phone_num = phone_num
+        self.sleep_time = sleep_time
+
 
 
 class MyApp(QWidget):
@@ -117,7 +198,7 @@ class MyApp(QWidget):
         super().__init__()
         self.command = None
         self.command_list = [
-            'cultureland-charge',
+            'culture-charge',
             'automatic-payment',
             'kakao'
         ]
@@ -148,6 +229,7 @@ class MyApp(QWidget):
 
     def return_signal(self, qle):
         self.command = qle.text()
+        self.check_command()
         self.close()
 
     def center(self):
@@ -157,11 +239,12 @@ class MyApp(QWidget):
         self.move(qr.topLeft())
 
     def check_command(self):
-        if self.command == 'cultureland-charge':
+        if self.command == 'culture-charge':
             cultureland_charger()
 
 
 def cultureland_charger():
+
     return
 
 
@@ -363,10 +446,11 @@ def main():
         if monitor.height not in monitor_resolution:
             monitor_resolution.append(monitor.height)
 
+    ap = AutomaticPayment()
     while True:
-        ap = AutomaticPayment()
         ap.auto_runner()
         mma_certificator()
+        # phone_certification()
 
 
 save_key = ''
