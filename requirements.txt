@@ -1,0 +1,8 @@
+opencv-python
+pyinstaller
+screeninfo
+pyautogui
+pywin32
+Pillow
+pynput
+PyQt5
